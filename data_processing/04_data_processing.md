@@ -1,0 +1,95 @@
+## 
+
+### 1. Pandas/NumPy 추가 기능 및 개념
+
+- **데이터 타입과 유효성 검사:**
+    - 텍스트 파일은 데이터 타입 정보가 없어 처리 시 문제가 발생.
+    - **Serialization Formats (직렬화 형식):** 데이터 저장/전송 시 중요 (예: JSON, CSV, Parquet 등).
+    - **데이터 유효성 검사 (Validation):** 데이터 처리 오류를 줄이기 위해 필수적.
+        - `pandera`와 같은 라이브러리나 SQL, 정규표현식 등을 활용하여 데이터 타입, 형식, 범위 등을 검증할 수 있.
+- **Pandas Series 특징:**
+    - `type(tips.sex)` -> `Series`: 1차원 배열과 유사하며, **동종(Homogeneous)** 데이터를 가짐.
+    - `.value_counts()`: Series 내 고유값들의 빈도를 계산 (리덕션 연산).
+- **인덱스 기반 연산:**
+    - Pandas는 연산 시 **인덱스를 기준**으로 정렬(align)하여 계산.
+    - 인덱스가 다른 Series/DataFrame 간의 연산은 같은 인덱스를 가진 요소끼리만 수행됨 (기본적인 브로드캐스팅과 다름).
+    - 스칼라 값(단일 값)과의 연산은 브로드캐스팅 .(`tips.tip + 1`).
+- **결측치 (Missing Data) 처리:**
+    - **Python `None`:** 파이썬의 기본 결측값. Pandas에서 사용 시 숫자형 데이터의 동종성(Homogeneous)을 깨뜨리고 연산 불가 문제를 일으킴.
+    - **NumPy `NaN` (Not a Number):** Pandas가 숫자형 데이터의 결측치를 표현하는 방식. `float` 타입으로 처리되어 동종성을 유지하고 연산 가능.
+        - `tips.tip[0] = None` -> Pandas 내부적으로 `NaN`으로 변환됨.
+        - `NaN`은 `None`과 다름 (`tips.tip[0] is None` -> `False`).
+        - `NaN`은 자기 자신과도 같지 않음 (`np.nan == np.nan` -> `False`).
+    - **Pandas 연산과 `NaN`:** 대부분의 Pandas 연산(e.g., `.sum()`, `.mean()`)은 기본적으로 `NaN` 값을 **무시(skip)**하고 계산. (`skipna=True`가 기본값).
+        - **주의:** Scikit-learn, PyTorch, TensorFlow 등 다른 라이브러리는 `NaN`을 무시하지 않는 경우가 많으므로, 데이터 전처리 시 `NaN`을 적절히 처리(제거, 대체 등)해야...
+    - **NumPy Masked Array (`np.ma`):** 결측치나 유효하지 않은 값을 표현하는 또 다른 방식. 데이터를 직접 바꾸지 않고 마스크(mask)를 씌워 해당 값을 연산에서 제외하는 개념. (`fill_value`로 임시 값 지정). `.count()`는 마스크된 값을 제외하고 세지만, `len()`은 전체 길이를 반환.
+- **데이터 형태 변경 (Reshaping):** 연산을 위해 데이터의 `shape`과 `dtype`을 맞추는 것이 중요.
+    - **`reshape(shape, order='C'/'F')`:** 배열의 전체 요소 수는 유지하면서 차원과 크기를 변경.
+        - `1` 사용: 다른 차원의 크기가 주어지면 해당 차원의 크기를 자동으로 계산.
+        - `order='F'`: Fortran 스타일(열 우선)로 메모리 순서 변경 (기본값 'C'는 행 우선).
+        - 리턴값이 있으므로 원본은 변경되지 않음 (Immutable).
+    - **`resize(new_shape)`:** 배열의 크기 자체를 변경 (요소 수 변경 가능).
+        - 크기를 줄이면 데이터 유실, 늘리면 0으로 채움 (Zero Padding).
+        - 리턴값이 없으므로 원본 배열을 직접 변경 (Mutable).
+    - **`flatten(order='C'/'F')`:** 다차원 배열을 1차원으로 펼침. 항상 **복사본(Copy)**을 반환 (Deep Copy).
+    - **`ravel(order='C'/'F')`:** 다차원 배열을 1차원으로 펼침. 가능한 경우 원본 배열의 **뷰(View)**를 반환 (Shallow Copy). 원본이 변경되면 뷰도 변경될 수 있음.
+- **복사 (Copy) vs. 뷰 (View):** Mutable 객체(리스트, NumPy 배열 등) 처리 시 중요.
+    - **할당 (`b = a`):** 같은 객체를 참조. `b`를 변경하면 `a`도 변경됨.
+    - **얕은 복사 (Shallow Copy):** (`b = a[:]`, `b = a.copy()`, NumPy의 `view()`, `ravel()`)
+        - 최상위 객체는 복사하지만, 내부에 포함된 객체는 참조. 중첩된 구조에서 내부 객체를 변경하면 원본도 변경될 수 있음.
+    - **깊은 복사 (Deep Copy):** (`import copy; b = copy.deepcopy(a)`, NumPy의 `copy()`, `flatten()`)
+        - 객체 내부의 모든 요소까지 재귀적으로 복사. 원본과 완전히 독립적인 복사본 생성.
+    - **NumPy 기본:** `.copy()`는 Deep Copy, `.view()`는 Shallow Copy.
+- **요소별 연산 (Element-wise Operation / Vectorization):**
+    - **`map(func / dict)`:** **Series**에만 적용 가능. 함수나 딕셔너리를 각 요소에 적용하여 변환.
+    - **`apply(func, axis=0/1)`:** **Series** 및 **DataFrame**에 적용 가능. 함수를 Series 전체(axis=0, 열 단위) 또는 DataFrame의 행/열(axis=0/1) 단위로 적용. 딕셔너리 문법은 사용 불가.
+    - **`applymap(func)`:** **DataFrame**에만 적용 가능. 함수를 각 **요소별**로 적용. (Pandas 2.x 이후 `map`으로 통합/변경될 수 있음)
+    - **UFunc (Universal Function):** NumPy에서 유래된 개념으로, 벡터화된 연산을 효율적으로 수행하는 함수. Pandas 객체에도 적용 가능 (`__array_ufunc__` 참조).
+
+### 2. 탐색적 데이터 분석 (Exploratory Data Analysis - EDA)
+
+- **정의 (John Tukey, 1970s):** 데이터셋을 분석하고 주요 특징을 요약하기 위해, 주로 시각화 방법을 사용하여 데이터를 조사하는 접근 방식. 공식적인 모델링이나 가설 검정 이전에 수행.
+- **목적:**
+    - 데이터에 대한 직관/이해 개발.
+    - 패턴 발견, 이상치(Anomalies) 탐지, 변수 간 관계 파악.
+    - 가정(Assumptions) 검증 및 유효성 확인.
+    - 더 나은 가설 생성.
+    - 예측력 있는 변수 식별.
+    - 적절한 통계 기법 및 모델 선택 지원.
+- **중요성:**
+    - 가정을 하기 전에 데이터를 객관적으로 바라봄.
+    - 명백한 오류 식별.
+    - 결과의 유효성 및 비즈니스 목표 부합 확인.
+    - 올바른 질문을 하고 있는지 확인 (Stakeholder 관점).
+- **DIKW 피라미드:** 데이터(Data) → 정보(Information) → 지식(Knowledge) → 지혜(Wisdom/Insight). EDA는 주로 **데이터를 정보로 변환**하는 과정(Descriptive Analytics)에 해당.
+- **분석 유형:**
+    - **기술 분석 (Descriptive):** 과거에 무슨 일이 있었는지 설명 (EDA 해당).
+    - **진단 분석 (Diagnostic):** 왜 발생했는지 원인 파악.
+    - **예측 분석 (Predictive):** 미래에 무엇이 일어날지 예측.
+    - **처방 분석 (Prescriptive):** 다음에 무엇을 해야 할지 제안/권고.
+    - **실시간 분석 (Real-time):** 현재 데이터를 즉시 분석.
+- **EDA 유형:**
+    - **비그래픽 (Non-graphical):**
+        - **단변량 (Univariate):** 변수 하나 분석.
+            - 수치형: 중심 경향성(평균, 중앙값, 최빈값), 변동성(분산, 표준편차, IQR, 범위), 분포 형태(왜도, 첨도), 이상치.
+            - 범주형: 빈도(Frequency), 비율, 교차표(Tabulation).
+        - **다변량 (Multivariate):** 둘 이상의 변수 관계 분석. 교차표(Cross-Tabulation), 상관관계(Correlation), 공분산(Covariance).
+    - **그래픽 (Graphical):**
+        - **단변량 (Univariate):** 히스토그램(Histogram, 연속형 변수 분포 시각화, bin 크기 중요), 박스 플롯(Box Plot, 5가지 요약 통계량 시각화), 막대 그래프(Bar Plot, 범주형 변수 빈도/비율), 파이 차트, QQ 플롯, Stem-and-leaf plot.
+        - **다변량 (Multivariate):** 산점도(Scatter Plot, 두 연속형 변수 관계), 그룹 막대 그래프, 누적 막대 그래프, 히트맵(Heatmap), 버블 차트, Run 차트, 평행 좌표(Parallel Coordinates).
+- **주요 통계 개념:**
+    - **중심 경향성 (Central Tendency):** 데이터의 중심 위치 (평균-Mean, 중앙값-Median, 최빈값-Mode). 평균은 이상치에 민감, 중앙값은 덜 민감(왜곡된 분포에 유용).
+    - **변동성/산포도 (Variation/Variability/Spread):** 데이터가 퍼져있는 정도 (분산-Variance, 표준편차-Standard Deviation, 사분위수 범위-IQR, 범위-Range).
+    - **상대적 위치 (Relative Standing):** 데이터 내 특정 값의 위치 (백분위수-Percentile, 사분위수-Quartile). Q1(25%), Q2(중앙값, 50%), Q3(75%). IQR = Q3 - Q1.
+- **EDA 접근법/기술:**
+    - 각 변수별 단변량 시각화 및 요약 통계.
+    - 목표 변수와 다른 변수 간 이변량 시각화 및 요약 통계.
+    - 변수 간 상호작용 파악을 위한 다변량 시각화.
+    - 군집화(Clustering), 차원 축소(PCA 등) 기법 활용 (고차원 데이터 시각화).
+    - 예측 모델(선형 회귀 등) 활용.
+
+- Pandas는 `NaN`을 사용하여 숫자형 결측치를 효율적으로 처리하며, 대부분의 연산에서 이를 무시합니다.
+- NumPy/Pandas에서 데이터 형태 변경(`reshape`, `resize`, `flatten`, `ravel`)과 복사/뷰(`copy`, `view`) 개념은 메모리 관리 및 데이터 무결성에 중요.
+- `map`, `apply`, `applymap`은 데이터에 함수를 유연하게 적용하는 방법을 제공.
+- EDA는 데이터 분석의 초기 단계로, 시각화와 통계 기법을 통해 데이터의 구조, 패턴, 이상치, 변수 간 관계를 파악하여 데이터에 대한 이해를 높이고 후속 분석 방향을 설정하는 중요한 과정.
+- EDA는 중심 경향성, 변동성, 분포 형태 등 기술 통계를 활용하며, 히스토그램, 박스 플롯, 산점도 등 다양한 시각화 기법 사용.
