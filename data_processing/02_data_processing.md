@@ -1082,5 +1082,3 @@ sns.boxplot(x='day', y='total_bill', data=tips)
 plt.title('요일별 계산서 금액 분포')
 plt.show()
 ```
-
-이 시각화를 통해 데이터의 중심 경향, 분산, 이상치를 한눈에 파악할 수 있어 통계적 데이터 분석에 매우 유용합니다.
